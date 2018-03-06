@@ -5,7 +5,7 @@ date: "March 3, 2018"
 output: html_document
 ---
 
-```{r}
+```{r, opts_chunk$set(echo=FALSE)}
 library(tidyverse)
 library(randomForest)
 library(party)
@@ -14,6 +14,7 @@ library(ROCR)
 library(PRROC)
 library(knitr)
 library(kableExtra)
+library(memisc)
 ```
 
 
@@ -43,7 +44,7 @@ To read in the transcriptions, I used the R package 'TuneR', which produced tabu
 
 The simplified tabular data has the following format:
 
-```{r echo=FALSE, results='asis'}
+```{r echo=FALSE, results='asis', cache=TRUE}
 data <- read.table(unz("data.zip","data/midi_db.csv"),
                    header=T,
                    quote="\"",
@@ -56,7 +57,7 @@ kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive
 
 Each row is a note event. The columns indicate that the note event is ocurring at a given time (in ticks), within a given transcription title, for the given track, by the indicated channel, at the indicated midi note number (pitch) or equivalent notename, and with the indicated velocity. I summarize these note events by track to get a statistical description to feed into the classifier.
 
-```{r echo=FALSE, results = 'asis'}
+```{r echo=FALSE, results='asis', cache=TRUE}
 agg <- read.table(unz("data.zip","data/midi_melodies.csv"),
                    header=T,
                    quote="\"",
@@ -65,6 +66,12 @@ agg <- read.table(unz("data.zip","data/midi_melodies.csv"),
 agg[1:5,] %>%
 kable("html") %>%
 kable_styling(bootstrap_options = "striped", full_width = F, position = "float_right")
+```
+
+These statistical summaries of the musical data are defined by melodic and rhythmic properties as well as track-related properties. The descriptors are defined in the following table.
+
+```{r}
+
 ```
 
 
