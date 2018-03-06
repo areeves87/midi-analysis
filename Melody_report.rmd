@@ -1,0 +1,46 @@
+---
+title: "Melody Track Identification"
+author: "Alex Reeves"
+date: "March 3, 2018"
+output: html_document
+---
+
+#Abstract
+
+MIDI files have tracks with musical note data in them. Usually, one of those tracks is the melody and the others are accompaniment. The goal of the work is to automatically identify the melody using the statistical properties of the musical content and pattern recognition techniques. Finding the meldoy automatically could be useful for a number of tasks, like speeding up melody matching when searching MIDI databases or motif extraction. Here I show a method for automatically selecting the melody track with AUC-ROC 0.926 and a AUC-PR of 0.772 using a conditional random forest model. The predictors for the cRF model were derived from the statistical properties of the MIDI tracks, and the model outputs a probability that the track is the melody. For training and testing data, I hand-labeled the melody tracks of 226 Final Fantasy MIDI songs. 
+
+#Introduction
+
+MIDIs files freely available on the internet number in the 100,000s. Most of these MIDIs contain a number of tracks, one of which is the melody and the others are accompaniement. The goal of this work is to automatically identify the melody from the stastical properties of the MIDI file. This methodology could be extended to other symbolic music file types since it relies on note pitch and duration information, which is essential to any symbolic representation of music. The main difficulty would be in writing the file parser so that track information from the new file type could be read into the routine. 
+
+Although I started this project without serious consideration of the practical benefits of automatically selecting the melody track, in hindsight there are good applications. For example, if you wanted to query a database for a melody, it would reduce the search space if you knew or could accurately predict which track would contain the melody. This is because most of the time what people get stuck in their head is the melody, so their query is usually a melody. Another application would be extracting themes and motifs from corpuses, since melodies typically contain the themes and motifs.
+
+This work follows the approach of David Rizo's paper. He implimeneted machine learning instead of simple heuristics based on note statistics or track names. Since his paper, there have been many interesting developments in the field of music information retrieval. But to date the work of identifying and parsing melodies from MIDI files mostly focuses on classical, jazz, and pop music genres. I try to extend this approach to videogame music, which is a genre born and bred in the MIDI format. 
+
+His approach was in contrast to those before him who had implimented simple heuristics. 
+
+Since his paper, others have implimeneted his approach while also bearing in mind the imbalanced nature of melody selection. That is, accompaniement tracks typically outnumber melody tracks 4:1. They improve their algorithm's performance by upsampling melodies or downsampling accompaniment.
+
+#Methods
+
+##Midi Track Characterization
+
+##Random Forest Classifier
+
+##Track Selection Procedure
+
+#Results
+
+##Datasets
+
+##Experiments
+
+###Melody vs. non-melody classification
+
+###Melodic track selection experiment
+
+###Style specificity
+
+###Traing set specificity
+
+#Conclusions and Future Work

@@ -1,0 +1,374 @@
+---
+title: "Midi Analysis"
+author: "Alex Reeves"
+date: "February 26, 2018"
+output: html_document
+---
+
+```{r}
+library(tidyverse)
+library(tuneR)
+```
+
+#Theme Discovery
+
+At the start of any project, I'll take stock of the pros and cons before embarking just to feel sure that what I'll be working on is worthwile. BUt if I asses to critically, I'll never get started. So I try to be generous when considering benefits and stingy when considering potential pitfalls. 
+
+I was watching a video analyzing the music of one of my all-time favorite videogames, Final Fantasy VII. One of the most impressive things about composer Nobuo Uematsu's score is how he weaved repetitions of the Final Fantasy VII main theme into so many of the game's tracks. If you don't know what I mean, you can watch that very same video identify some exemplary recapitulations of the main theme right [here](https://youtu.be/gIDtKYCzwqo?t=306).
+
+Time magazine opined that Uematsu's music imbues the story with "grandeur and depth" (Time Magazine). Uematsu himself states that he's omnivorous in his musical taste. In that sense, his vast musical landscape could just be a consequence of his appetite for variety (red bull interview). The behaviorist in me thinks it has more to do with spontaneously generating ear-worms, but that's another story for another time. Whether his melodies were immersively addictive or addictively immersive is beside my point.  
+
+What I want to talk about, what captivated me about Uematsu's repetitions is the insights those repetitions gave me into his compositional thought process. To me, each recaptitulation revealed a new facet of Uematsu's deeper theme. I think that if we had enough recaps, we could model what he hears in his head.
+
+That's when I had the big idea behind this post. I decided to try asssembling all the themes and variations in the FFVII OST. I wanted to see for myself how the themes changed with different repetitions and musical contexts. I was going to unlock the music-making process of video gaming's greatest composer. It was going to be ~~epic~~ lit!
+
+And then I started listening to the songs. Boy, there's kind of a lot of them to go through. 4.5 hours of music total. Even if I just focused on the main theme that's a lot of focused listening. So I decided to just start with the recaps of the FF7 main theme identified in the video. But there I got stuck too. Even though I knew which tracks to look at, I didn't have the sheet music to pore over. That's fine, I'll just find the MIDI files and then load them into a free DAW like Reaper.
+
+I noticed that the recapitulation of the theme was often located in the melody of a song. When it comes to remembering a song, the melody is king. Melodies are what you sing to someone else to get them to recognize a song. They're often the thing that stays with you after hearing a piece of music -- whether you want to remember it or not.
+
+It stands to reason that automatically identifying melodies would be a useful first step towards mining a soundtrack to comprehensively identify all its repeated themes. Similarly, we could mine a composer for all their signature note choices. After all it was bassist/composer Jaco Pastorius who said this to say about his distinctive sound: ["lots of things that have to do with the sound -- as opposed to not just the sound -- is the choice of notes."](https://youtu.be/T6CH7WrK194?t=2045)
+
+*A solution would have enough impact to justify the effort.*
+
+Since themes are often located in the melody, identifying the melody track would minimize the number of tracks that need to be searched in order to extract repetitions. 
+
+*Relevant data is available in a usable format - flat files or csvs are usually good, proprietary formats or complex structures make more work.*
+
+Videogame MIDIs are widely and freely available on the internet. Furthermore, videogames scores were originally meant to be heard in MIDI format, so MIDI transcriptions are more relevant for videogame music than many other genres. In terms of usability, there's the TuneR package, which can read MIDIs into RStudio as tidy and tabular data for analysis.
+
+*There is plenty of data to work with - as Peter Norvig famously said of Google, “We don’t have better algorithms. We just have more data”.*
+
+I've seen a videogame music dataset with 10,000s of MIDI files ([Ref.](https://www.vgmusic.com/). Let's say that each MIDI file contains 2000 note onset events on average. That's on the order of 20 million notes to look through! 
+
+If we expand the dataset to all genres, I've seen MIDI file corpuses with 130,000 MIDI files ([Ref.](https://www.reddit.com/r/datasets/comments/3akhxy/the_largest_midi_collection_on_the_internet/)). Reusing an average of 2000 notes per MIDI file, we're talking a dataset of 250 million notes! 
+
+To be frank, I don't want to analyze 100 million or 10 million notes. I'm going to restrict myself to a corpus of about 0.5 million notes. That way my thinking doesn't get slowed down by my computer trying to handle my requests.
+
+*Expert colleagues from “the business” are willing and interested to engage with the data science process - it will cut out a lot of dead ends if you have 
+experienced business colleagues on hand who can help you pick out the most useful data sources, tell you where the bodies are buried in the data, and construct good features to feed into your algorithm.*
+
+I got David Rizo to agree to help. I sent out 40 emails to transcribers all either no longer using their email address or didn't reply. I've got one media guy that wants to see my github. 
+
+#Melody Track Selection in MIDI Files
+
+When it comes to remembering a song, the melody is king. Melodies are what you sing to someone else to get them to recognize a song. They're often the thing that stays with you after hearing a piece of music -- whether you want to remember it or not.
+
+In soundtracks, melodies are often rife with repeated themes and leitmotifs, which helps tie together related scenes musically. This is true for both movie soundtracks like the [force theme in starwars](https://www.youtube.com/watch?annotation_id=annotation_2013086735&feature=iv&src_vid=I47rvxq7yQg&v=qkwJ7ezDFmw) and for videogame soundtracks like [Final Fantasy VII](https://www.youtube.com/watch?v=gIDtKYCzwqo). 
+
+It stands to reason that automatically identifying melodies would be a useful first step towards mining a soundtrack to comprehensively identify all its repeated themes. Similarly, we could mine a composer for all their signature note choices. After all it was bassist/composer Jaco Pastorius who said this to say about his distinctive sound: ["lots of things that have to do with the sound -- as opposed to not just the sound -- is the choice of notes."](https://youtu.be/T6CH7WrK194?t=2045)
+
+MIDIs are convenient for use in automatically id'ing melodies since they are wildely available for free on the internet. MIDIs are amenable to automation since they are machine-readable. MIDIs can accurately represent the original audio. 
+
+For these reasons I've developed a model for automatically identifying the melody tracks in a corpus of Final Fantasy MIDIs. All of the songs are attributed to the composer Nobuo Uematsu. The transcribers number in the dozens and it is somewhat impractical to list them here. However, many of them recorded their name and email in their MIDI transcription. 
+
+
+
+#Sourcing the Data:
+
+It all started with a google search for Final Fantasy MIDIs. 
+
+The corpora was a collection of 227 final fantasy midi files made freely available by Aaron Walz with permissions from the transcribers. 
+
+
+#Loading Midi Data into R:
+
+
+
+The first step was to use the R package `TuneR` developed by Uwe Ligges et. al. to read the midi files into RStudio. I verified that the `readMidi` function could read the midi data from the ffmidi file "FF1airsh.mid". Then I examined the format of the data frame with `str` followed by a call to `head` with enough rows included to see the first few notes.
+
+```{r, dependson = 'chunk-1', cache = TRUE}
+
+FF1_airsh <- readMidi("ffmidi/FF1airsh.mid")
+str(FF1_airsh)
+head(FF1_airsh, 15)
+
+```
+
+We can see from our call to `str` that readMidi outputs a data.frame. Each row specifies an event and each column further defines the essential features of the event, be it the timing, channel output, or subtype of said event. The call to `head` reveals that rows 1-4 contain header data for the song -- Tempo, Key, and Time signature events. Afterwards is data for the track, where rows 5-10 contain header info -- MIDI port and Program Change events-- and rows 10-15 contain note onset and offset events, which specifies which notes to turn on and off within a given track/channel.
+
+To begin with, we are primarily interested in the note onset/offset events. In order to simplify this data.frame, let's extract just the note onset and offset data for each channel and leave aside the header information for a second. We'll use another function from the tuneR package called `getMidiNotes` to do this:
+
+```{r,dependson = 'chunk-2', cache = TRUE}
+
+FF1_airsh_notes <- getMidiNotes(FF1_airsh)
+
+str(FF1_airsh_notes)
+head(FF1_airsh_notes)
+
+```
+
+The function `getMidiNotes` returns a simplified data.frame that skips the header and goes straight to the note events. Each row is a note event with the onset given by the time column, the duration given by the length column, and the pitch given by the note column, among other features. This table is easier on the eyes, yet its still hard to get the gist of the song from this format. If you're familiar with MIDI composition, you might have seen [piano roll](https://en.wikipedia.org/wiki/Piano_roll#/media/File:Computer_music_piano_roll.png) format before. We can see what the first 20,000 ticks of the song looks like in piano roll format with the following call to ggplot:
+
+```{r}
+
+ggplot(FF1_airsh_notes, aes(colour = as.factor(channel))) +
+geom_segment(aes(x = time, 
+                 xend = time+length, 
+                 y = notename, 
+                 yend = notename), 
+             size=3) +
+xlim(0,20000) +
+xlab("Time (Ticks)")
+
+
+```
+
+Here we have a piano roll plot with discrete time in "Ticks" on the x-axis and names of the pitches on the y-axis. The segments are colored by channel, revealing distinct pitch ranges and contours. For example, channel 0 (red) is relatively high-pitched and varied, whereas channels 3 and 9 (teal and purple) are relatively low-pitched and repetitive. As it turns out, 0 is the melody, 2 is the chords, 3 is the bassline, 4 is a brief flurry from the flute, and 9 is the drum part. 
+
+We can verify the accuracy of this MIDI transcription by comparing it to the original soundtrack. First check out this [animation](https://www.youtube.com/watch?v=u7ZydXGXlTU) of the MIDI file that I uploaded to youtube. Then, try verifying the different instruments while you listen to the [original soundtrack](https://www.youtube.com/watch?v=YFlIVI0myk4). 
+
+In the OST, you can hear the melody, chords, bassline, and even the flute flurry, but it doesn't sound like there's any notes from the drum part represented by channel 9. Apparently, the MIDI transcriber decided to add a drum track to channel 9. Did they hallucinate another part while they were transcribing? Did they think they could improve on Nobuo Uematsu's original score? Without commentary from the transcriber, we can only speculate (although I could've been more charitable with my guesses.)
+
+In any case, the discrepancy between the transcription and the original soundtrack is an important reminder that we are compiling a dataset of the transcriber's estimate of the Final Fantasy soundtracks, not the OSTs themselves. The extent to which that affects the validity and reliability of the dataset depends on our precise research question. 
+
+
+```{r}
+source("func.R")
+
+###Make or load midi dataset, including meta data
+
+if(file.exists("raw_midi.csv")) {
+        raw_midi <- read.csv("raw_midi.csv")
+}else{ 
+        raw_midi <- build_db(directory = "ffmidi", FUN = readMidi)
+        write.csv(raw_midi, "raw_midi.csv", row.names = FALSE)
+}
+
+
+###Make or load simplified note dataset, 
+###includes only track's note values and durations
+
+if(file.exists("midi_db.csv")) {
+        midi_db <- read.csv("midi_db.csv")
+}else{ 
+        midi_db <- build_db("ffmidi", function(x) getMidiNotes(readMidi(x)))
+        write.csv(midi_db, "midi_db.csv", row.names = FALSE)
+}
+```
+
+Can we come up with a rule for identifying the melody track? Looking at piano plots of four different songs, the red notes stand out as being high-pitched and varied everytime. However in some cases the red notes overlap with notes from other channels. So there isn't a clean seperation based purely on pitch.
+
+
+```{r}
+p1 <- ggplot(midi_db %>% filter(title == "FF1airsh.mid"), 
+             aes(colour = as.factor(channel),
+                 alpha = 0.5)) +
+        geom_segment(aes(x = time, 
+                         xend = time+length, 
+                         y = note, 
+                         yend = note), 
+                     size=1) +
+        xlim(0,20000) +
+        xlab("Airship")+
+        theme(legend.position = "none")+
+        ylab(NULL)
+
+p2 <- ggplot(midi_db %>% filter(title == "FF1prolo.mid"), 
+             aes(colour = as.factor(channel),
+                 alpha = 0.5)) +
+        geom_segment(aes(x = time, 
+                         xend = time+length, 
+                         y = note, 
+                         yend = note), 
+                     size=1) +
+        xlim(0,20000) +
+        xlab("Prologue")+
+        ylab(NULL) +
+        theme(legend.position = "none")
+
+
+p3 <- ggplot(midi_db %>% filter(title == "FF1castl.mid"), 
+             aes(colour = as.factor(channel),
+                 alpha = 0.5)) +
+        geom_segment(aes(x = time, 
+                         xend = time+length, 
+                         y = note, 
+                         yend = note), 
+                     size=1) +
+        xlim(0,20000) +
+        xlab("Castle")+
+        ylab(NULL) +
+        theme(legend.position = "none")
+
+p4 <- ggplot(midi_db %>% filter(title == "FF1ship.mid"), 
+             aes(colour = as.factor(channel),
+                 alpha = 0.5)) +
+        geom_segment(aes(x = time, 
+                         xend = time+length, 
+                         y = note, 
+                         yend = note), 
+                     size=1) +
+        xlim(0,20000) +
+        xlab("Ship")+
+        ylab(NULL) +
+        theme(legend.position = "none")
+
+
+layout <- matrix(1:4,2,2,byrow=TRUE)
+
+multiplot(p1, p2, p3, p4, layout=layout)
+```
+
+```{r}
+p5 <- ggplot(data = midi_db %>% filter(title == "FF1airsh.mid"), 
+             aes(x = as.factor(channel),
+                 y = note)) +
+        geom_boxplot(aes(fill = as.factor(channel))) +
+        theme(legend.position = "none")+
+        xlab("Airship")+
+        ylab(NULL)
+
+p6 <- ggplot(data = midi_db %>% filter(title == "FF1prolo.mid"), 
+             aes(x = as.factor(channel),
+                 y = note)) +
+        geom_boxplot(aes(fill = as.factor(channel))) +
+        theme(legend.position = "none")+
+        xlab("Prologue")+
+        ylab(NULL)
+
+
+p7 <- ggplot(data = midi_db %>% filter(title == "FF1castl.mid"), 
+             aes(x = as.factor(channel),
+                 y = note)) +
+        geom_boxplot(aes(fill = as.factor(channel))) +
+        theme(legend.position = "none")+
+        xlab("Castle")+
+        ylab(NULL)
+
+p8 <- ggplot(data = midi_db %>% filter(title == "FF1ship.mid"), 
+             aes(x = as.factor(channel),
+                 y = note)) +
+        geom_boxplot(aes(fill = as.factor(channel))) +
+        theme(legend.position = "none")+
+        xlab("Ship")+
+        ylab(NULL)
+
+
+layout <- matrix(1:4,2,2,byrow=TRUE)
+
+multiplot(p5, p6, p7, p8, layout=layout)
+```
+
+
+#Paraphrasing the algorithm and labeling method from David Rizo:
+
+Standard MIDI files contain data that can be considered as
+a symbolic representation of music (a digital score), and
+most of them are structured as a number of tracks. One of
+them usually contains the melodic line of the piece, while
+the other tracks contain accompaniment music. The goal of
+this work is to identify the track that contains the melody using
+statistical properties of the musical content and pattern
+recognition techniques. Finding that track is very useful for
+a number of applications, like speeding up melody matching
+when searching in MIDI databases or motif extraction,
+among others
+
+Standard MIDI files contain the pitch and duration information necessary for producing a musical score, usually in a number of seperate tracks. One of these tracks usually contains a melody, while the others are accompaniment. The goal of this work is to identify the melody track given a MIDI file. I calculate the statistics of the pitch and duration information as well as look at instrumentation and output channel in order to make this prediction. I generate a melody probability for each track based on a random forest classifier. 
+
+Ideally, each midi file would have a single melody track to classify. However, in practice, this is not always the case. There are midi files where more than one track could be labeled melody. Conversely, there are files where there is no obvious melody track, either by virtue of complex symphony where all instrument tracks have their own melody or single track piano sequences where the melody is embedded within dense polyphony where it cannot be easily extracted. These are rare cases and the classifier can't handle all of them.
+
+The proposed melody classifier can handle cases with more than one obvious melody track, since it assigns melody probabilities for all tracks and the threshold for classifying a melody is arbitrary. 
+
+However, the classifier will not be able to score the second type of melody, which is embedded within dense polyphony. 
+
+The classifier selects at most one track as the melody track. Even if multiple melody tracks have a high score, only the highest scoring track is selected as the melody. However if all the tracks have a low score (<0.1) then no melody track is selected.
+
+Originally, the cut-off for melodies wasn't <0.1, it was <0.5. But this cutoff overestimated the true number of melody-less tracks. When compared to a system with no probability threshold, the 0.5 cutoff performed worse. So we identified a cutoff that had better accuracy than no threshold at all, which was <0.1.
+
+Six corpora (see Table 2) were created, due to the lack of
+existing databases for this task. The files were downloaded
+from a number of freely accessible Internet sites. First, three
+corpora (named JZ200, CL200, and KR200) were created to
+set up the system and to tune the parameter values. JZ200
+contains jazz music files, CL200 has classical music pieces
+where there was an evident melody track, and KR200 contains
+popular music songs with a part to be sung (karaoke
+(.kar) format). All of them are made up of 200 files. Then,
+three other corpora (named JAZ, CLA, and KAR) from the
+same music genres were compiled from a number of different
+sources to validate our method. This dataset is available
+for research purposes on request to the authors.
+
+The main difficulty for building the data sets was to label
+the tracks in the MIDI files. Text tagging of MIDI tracks
+based on metadata such as the track name, is unreliable.
+Thus, a manual labeling approach was carried out. A musician
+listened to each one of the MIDI files playing all the
+tracks simultaneously with a sequencer. For each file, the
+track(s) containing the perceived melody were identified and
+tagged as melody. The rest of tracks in the same file were
+tagged as non-melody. In particular, introduction passages,
+second voices or instrumental solo parts were tagged as non-melody,
+aiming to characterize what is clearly a lead melody
+part.
+
+Some songs had no tracks tagged as melody because either
+it was absent, or the song contained just a melody-less
+accompaniment, or the melody constantly moves from
+one track to another. Other songs contained more than one
+melody track (e.g. duplicates, often with a different timbre)
+and all those tracks were tagged as melody.
+
+```{r eval=FALSE, include=FALSE}
+source("load.R")
+
+p1 <- ggplot(midi_db %>% filter(title == "FF1airsh.mid"), 
+             aes(colour = as.factor(channel),
+                 alpha = 0.5)) +
+        geom_segment(aes(x = time, 
+                         xend = time+length, 
+                         y = note, 
+                         yend = note), 
+                     size=1) +
+        xlim(0,20000) +
+        xlab("Time (Ticks)")+
+        ylab(NULL) +
+        theme(legend.position = "none")
+
+p2 <- ggplot(midi_db %>% filter(title == "FF1prolo.mid"), 
+             aes(colour = as.factor(channel),
+                 alpha = 0.5)) +
+        geom_segment(aes(x = time, 
+                         xend = time+length, 
+                         y = note, 
+                         yend = note), 
+                     size=1) +
+        xlim(0,20000) +
+        xlab("Time (Ticks)")+
+        ylab(NULL) +
+        theme(legend.position = "none")
+
+
+p3 <- ggplot(midi_db %>% filter(title == "FF1castl.mid"), 
+             aes(colour = as.factor(channel),
+                 alpha = 0.5)) +
+        geom_segment(aes(x = time, 
+                         xend = time+length, 
+                         y = note, 
+                         yend = note), 
+                     size=1) +
+        xlim(0,20000) +
+        xlab("Time (Ticks)")+
+        ylab(NULL) +
+        theme(legend.position = "none")
+
+p4 <- ggplot(midi_db %>% filter(title == "FF1ship.mid"), 
+             aes(colour = as.factor(channel),
+                 alpha = 0.5)) +
+        geom_segment(aes(x = time, 
+                         xend = time+length, 
+                         y = note, 
+                         yend = note), 
+                     size=1) +
+        xlim(0,20000) +
+        xlab("Time (Ticks)")+
+        ylab(NULL) +
+        theme(legend.position = "none")
+
+
+layout <- matrix(1:4,2,2,byrow=TRUE)
+
+multiplot(p1, p2, p3, p4, layout=layout)
+```
+
