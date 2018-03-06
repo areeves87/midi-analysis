@@ -5,6 +5,18 @@ date: "March 3, 2018"
 output: html_document
 ---
 
+```{r}
+library(tidyverse)
+library(randomForest)
+library(party)
+library(pROC)
+library(ROCR)
+library(PRROC)
+library(knitr)
+library(kableExtra)
+```
+
+
 #Abstract
 
 MIDI files have tracks with musical note data in them. Usually, one of those tracks is the melody and the others are accompaniment. The goal of the work is to automatically identify the melody using the statistical properties of the musical content and pattern recognition techniques. Finding the meldoy automatically could be useful for a number of tasks, like speeding up melody matching when searching MIDI databases or motif extraction. Here I show a method for automatically selecting the melody track with AUC-ROC 0.926 and a AUC-PR of 0.772 using a conditional random forest model. The predictors for the cRF model were derived from the statistical properties of the MIDI tracks, and the model outputs a probability that the track is the melody. For training and testing data, I hand-labeled the melody tracks of 226 Final Fantasy MIDI songs. 
@@ -28,6 +40,78 @@ The dataset consists of 227 MIDI transcriptions from the game series Final Fanta
 To read in the transcriptions, I used the R package 'TuneR', which produced tabular data representing all the note events in the transcription. From this I split the data into test and train groups. Then I trained the classifier on the training data and validated the classifier's performance using the test data.
 
 ##Midi Track Characterization
+
+The simplified tabular data has the following format:
+
+```{r echo=FALSE, results='asis'}
+data <- read.table(unz("data.zip","data/midi_db.csv"),
+                   header=T,
+                   quote="\"",
+                   sep=",")
+
+data[1:5,] %>%
+kable("html")%>%
+kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive"))
+```
+
+Each row is a note event. The columns indicate that the note event is ocurring at a given time (in ticks), within a given transcription title, for the given track, by the indicated channel, at the indicated midi note number (pitch) or equivalent notename, and with the indicated velocity. I summarize these note events by track to get a statistical description to feed into the classifier.
+
+```{r echo=FALSE, results = 'asis'}
+agg <- read.table(unz("data.zip","data/midi_melodies.csv"),
+                   header=T,
+                   quote="\"",
+                   sep=",")
+
+agg[1:5,] %>%
+kable("html") %>%
+kable_styling(bootstrap_options = "striped", full_width = F, position = "float_right")
+```
+
+
+A set of descriptors has been defined, based on several
+categories of features that assess melodic and rhythmic properties
+of a music sequence, as well as track related properties.
+This set of descriptors is presented in Table 1. The
+left column indicates the category being analyzed, and theright one shows the statistics describing properties from that
+category.
+Four features were designed to describe the track as a
+whole and fifteen to describe particular aspects of its content.
+For these fifteen descriptors, both normalized and nonnormalized
+versions have been computed. The former were
+calculated using the formula (valuei−min)/(max−min),
+where valuei
+is the descriptor to be normalized corresponding
+to the i-th track, and min and max are, respectively,
+the minimum and maximum values for this descriptor for
+all the tracks of the target midifile. This makes it possible
+to know these properties proportionally to the other tracks
+in the same file, using non-dimensional values. This way, a
+total number of 4 + 15 × 2 = 34 descriptors were initially
+computed for each track.
+The track information descriptors are its normalized duration
+(using the same scheme as above), number of notes,
+occupation rate (proportion of the track length occupied by
+notes), and the polyphony rate, defined as the ratio between
+the number of ticks in the track where two or more notes
+are active simultaneously and the track duration in ticks (the
+MIDI file resolution establishes how many ticks form a beat).
+Pitch descriptors are measured using MIDI pitch values.
+The maximum possible MIDI pitch is 127 (note G8) and the
+minimum is 0 (note C−2).
+The interval descriptors summarize information about the
+difference in pitch between consecutive notes. The absolute
+pitch interval values were computed.
+Finally, note duration descriptors were computed in terms
+of beats, so they are independent from the MIDI file resolution.
+A view to the graphs in Figure 1 provides some hints on what a melody track could look like using these descriptors.
+This way, a melody track seems to have less notes than
+other non-melody tracks, an average mean pitch, it contains
+smaller intervals, and has not too long notes. When this sort
+of hints are combined by the classifier, a decision about the
+track “melodicity” is taken. This type of reasoning has been
+used by other authors, like in [5], in order to build a series
+of rules able to take a decision on which is the melody track
+in a symbolic music file.
 
 ##Random Forest Classifier
 
