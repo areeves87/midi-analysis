@@ -5,7 +5,7 @@ date: "March 3, 2018"
 output: html_document
 ---
 
-```{r, opts_chunk$set(echo=FALSE)}
+```{r include=FALSE, opts_chunk$set(echo=FALSE)}
 library(tidyverse)
 library(randomForest)
 library(party)
@@ -17,6 +17,61 @@ library(kableExtra)
 library(memisc)
 ```
 
+```{r include=FALSE}
+# Multiple plot function
+#
+# ggplot objects can be passed in ..., or to plotlist (as a list of ggplot objects)
+# - cols:   Number of columns in layout
+# - layout: A matrix specifying the layout. If present, 'cols' is ignored.
+#
+# If the layout is something like matrix(c(1,2,3,3), nrow=2, byrow=TRUE),
+# then plot 1 will go in the upper left, 2 will go in the upper right, and
+# 3 will go all the way across the bottom.
+#
+multiplot <- function(..., plotlist=NULL, file, cols=1, layout=NULL) {
+        library(grid)
+        
+        # Make a list from the ... arguments and plotlist
+        plots <- c(list(...), plotlist)
+        
+        numPlots = length(plots)
+        
+        # If layout is NULL, then use 'cols' to determine layout
+        if (is.null(layout)) {
+                # Make the panel
+                # ncol: Number of columns of plots
+                # nrow: Number of rows needed, calculated from # of cols
+                layout <- matrix(seq(1, cols * ceiling(numPlots/cols)),
+                                 ncol = cols, nrow = ceiling(numPlots/cols))
+        }
+        
+        if (numPlots==1) {
+                print(plots[[1]])
+                
+        } else {
+                # Set up the page
+                grid.newpage()
+                pushViewport(viewport(layout = grid.layout(nrow(layout), 
+                                                           ncol(layout)
+                                                           )
+                                      )
+                             )
+                
+                # Make each plot, in the correct location
+                for (i in 1:numPlots) {
+        # Get the i,j matrix positions of the regions that contain this subplot
+                        matchidx <- as.data.frame(which(layout == i, 
+                                                        arr.ind = TRUE)
+                                                  )
+                        
+                        print(plots[[i]], 
+                              vp = viewport(layout.pos.row = matchidx$row,
+                                            layout.pos.col = matchidx$col)
+                              )
+                }
+        }
+}
+```
 
 #Abstract
 
@@ -38,7 +93,9 @@ The dataset consists of 227 MIDI transcriptions from the game series Final Fanta
 
 #Methods
 
-To read in the transcriptions, I used the R package 'TuneR', which produced tabular data representing all the note events in the transcription. From this I split the data into test and train groups. Then I trained the classifier on the training data and validated the classifier's performance using the test data.
+I used two different programs to read in the midi files, depending on my purpose. When I wanted to find and label the melody track in a midi file, I loaded the midi file into the digital audio workstation 'Reaper', found the melody track by ear, and recorded its title, track and channel in an excel spreadsheet. When I wanted to generate a table of midi data representing all the note events in a transcription, I used the R package 'TuneR' developed by Uwe Ligges et al.
+
+Using the data tables of note events, I summarized the music statistics of every track in the midi file corpus. Then I split the data into test and train groups in order to train and validate a classifier. The classifier learned to identify melody tracks within the training data by using the track statistics to predict the target label. Then I validated the classifier's performance using the test data.
 
 ##Midi Track Characterization
 
@@ -55,7 +112,9 @@ kable("html")%>%
 kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive"))
 ```
 
-Each row is a note event. The columns indicate that the note event is ocurring at a given time (in ticks), within a given transcription title, for the given track, by the indicated channel, at the indicated midi note number (pitch) or equivalent notename, and with the indicated velocity. I summarize these note events by track to get a statistical description to feed into the classifier.
+Each row is a note event. The columns indicate that the note event is ocurring within a given midi file, at a given time (in ticks), for a given length, within the given track, from the indicated channel, at the indicated midi note number (pitch) or equivalent notename, and with the indicated velocity. 
+
+I summarize these note events by track to get a statistical description to feed into the classifier. Below are the first few rows and a sample of columns from the summary dataset. Each row is a track within a midi file and the columns give important statistical information.
 
 ```{r echo=FALSE, results='asis', cache=TRUE}
 agg <- read.table(unz("data.zip","data/midi_melodies.csv"),
@@ -63,19 +122,19 @@ agg <- read.table(unz("data.zip","data/midi_melodies.csv"),
                    quote="\"",
                    sep=",")
 
-agg[1:5,] %>%
+agg[1:6,c(1:4,8,12)] %>%
 kable("html") %>%
-kable_styling(bootstrap_options = "striped", full_width = F, position = "float_right")
+kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive"))
 ```
 
-These statistical summaries of the musical data are defined by melodic and rhythmic properties as well as track-related properties. The descriptors are defined in the following table.
+The statistical summaries of the musical data are defined by melodic and rhythmic properties as well as song-level properties. The summaries are defined in the following data dictionary. The left column indicates a summary variable and the right column gives its definition.
 
-```{r}
+```{r echo=FALSE}
 var_name <- names(agg)
 var_descr <- c("title of the midi transcription",
                "channel # the note events stream from",
                "track # the note events are contained within",
-               "indicates whether or not the track is a melody",
+               "target label; indicates whether or not the track is a melody",
                "number of the instrument program",
                "family of the instrument program",
                "name of the instrument program",
@@ -83,7 +142,7 @@ var_descr <- c("title of the midi transcription",
                "fraction of song the track's note lengths occupy",
                "total number tracks",
                "total number channels",
-               "fraction of note events that are the highest note per event",
+               "fraction of track notes that are song's highest",
                "pitch class entropy",
                "interval entropy",
                "inter-onset interval entropy",
@@ -94,56 +153,110 @@ var_descr <- c("title of the midi transcription",
 
 data.frame(name = var_name, description = var_descr) %>%
 kable("html") %>%
-kable_styling(bootstrap_options = "striped", full_width = F, position = "float_right")
+kable_styling(bootstrap_options = "striped")
+```
+
+##Feature Selection
+
+The musical and meta properties of the midi file can be divided into song-level and track-level features. Song-level features describe the song as a whole whereas track-level features only summarize the musical data in a given track. Song-level and track-level features contributed to all nineteen descriptors in different mixtures. Three features (title, channels, tracks) exclusively used song-level information and thirteen features exclusively used track-level information. Two remaining descriptors, track_occ and top_rate, incorporated track-level information that was normalize to the properties of the song as a whole. 
+
+The last descriptor, ME, is a target labelling indicating whether I thought the track was a melody. Although it is difficult to specify the exact features I take into consideration when selecting the melody, it is safe to say that the label represents a mixture of song-level and track-level properties. The goal of this project is essentially to model my melody selection process.
+
+The graphs below give some insight into how one could possibly begin selecting the melody track using statistics. Each graph has two densities, the red densities are the non-melody tracks and the blue densities are the melody tracks. Some features show no appreciable difference between melody and non-melody tracks. But several features do, as evidenced by the markedly different shapes in melody vs. non-melody groups. 
+
+For example, when looking at the 'top_rate' feature, melody tracks (blue) are especially dense between the values 0.75 and 1.00, whereas non-melody tracks (red) are uniformly distributed between 0.00 and 1.00. Similarly, melody tracks tend to have low 'channel' value and high 'med_note' value. These differences can be exploited by a classifier to score how melodic a track is. 
+
+```{r echo=FALSE, cache=TRUE}
+######Density multiplot
+
+p1 <-   ggplot(agg, aes(x = channel, fill = as.factor(ME))) +
+        geom_density(alpha = 0.5) +
+        theme(legend.position = "none")
+
+p2 <-   ggplot(agg, aes(x = track, fill = as.factor(ME))) +
+        geom_density(alpha = 0.5) +
+        ylab(NULL) +
+        theme(legend.position = "none")
+
+p3 <-   ggplot(agg, aes(x = track_occ, fill = as.factor(ME))) +
+        geom_density(alpha = 0.5) +
+        ylab(NULL) +
+        theme(legend.position = "none")
+
+p4 <-   ggplot(agg, aes(x = frac_poly, fill = as.factor(ME))) +
+        geom_density(alpha = 0.5) +
+        ylab(NULL) +
+        theme(legend.position = "none")
+
+p5 <-   ggplot(agg, aes(x = events, fill = as.factor(ME))) +
+        geom_density(alpha = 0.5) +
+        scale_x_continuous(limits = c(0, 1000)) +
+        theme(legend.position = "none")
+
+p6 <-   ggplot(agg, aes(x = mad_int, fill = as.factor(ME))) +
+        geom_density(alpha = 0.5) +
+        ylab(NULL) +
+        theme(legend.position = "none")
+
+p7 <-   ggplot(agg, aes(x = IOI_entropy, fill = as.factor(ME))) +
+        geom_density(alpha = 0.5) +
+        ylab(NULL) +
+        theme(legend.position = "none")
+
+p8 <-   ggplot(agg, aes(x = pc_entropy, fill = as.factor(ME))) +
+        geom_density(alpha = 0.5) +
+        ylab(NULL) +
+        theme(legend.position = "none")
+
+p9 <-   ggplot(agg, aes(x = int_entropy, fill = as.factor(ME))) +
+        geom_density(alpha = 0.5) +
+        theme(legend.position = "none")
+
+p10 <-   ggplot(agg, aes(x = longpr, fill = as.factor(ME))) +
+        geom_density(alpha = 0.5) +
+        ylab(NULL) +
+        theme(legend.position = "none")
+
+p11 <-   ggplot(agg, aes(x = top_rate, fill = as.factor(ME))) +
+        geom_density(alpha = 0.5) +
+        ylab(NULL) +
+        theme(legend.position = "none")
+
+p12 <-   ggplot(agg, aes(x = med_note, fill = as.factor(ME))) +
+        geom_density(alpha = 0.5) +
+        ylab(NULL) +
+        theme(legend.position = "none")
+
+layout <- matrix(1:12,3,4,byrow=TRUE)
+
+multi.p1 <- multiplot(p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, 
+            p11, p12, layout=layout)
 ```
 
 
-A set of descriptors has been defined, based on several
-categories of features that assess melodic and rhythmic properties
-of a music sequence, as well as track related properties.
-This set of descriptors is presented in Table 1. The
-left column indicates the category being analyzed, and theright one shows the statistics describing properties from that
-category.
-Four features were designed to describe the track as a
-whole and fifteen to describe particular aspects of its content.
-For these fifteen descriptors, both normalized and nonnormalized
-versions have been computed. The former were
-calculated using the formula (valuei−min)/(max−min),
-where valuei
-is the descriptor to be normalized corresponding
-to the i-th track, and min and max are, respectively,
-the minimum and maximum values for this descriptor for
-all the tracks of the target midifile. This makes it possible
-to know these properties proportionally to the other tracks
-in the same file, using non-dimensional values. This way, a
-total number of 4 + 15 × 2 = 34 descriptors were initially
-computed for each track.
-The track information descriptors are its normalized duration
-(using the same scheme as above), number of notes,
-occupation rate (proportion of the track length occupied by
-notes), and the polyphony rate, defined as the ratio between
-the number of ticks in the track where two or more notes
-are active simultaneously and the track duration in ticks (the
-MIDI file resolution establishes how many ticks form a beat).
-Pitch descriptors are measured using MIDI pitch values.
-The maximum possible MIDI pitch is 127 (note G8) and the
-minimum is 0 (note C−2).
-The interval descriptors summarize information about the
-difference in pitch between consecutive notes. The absolute
-pitch interval values were computed.
-Finally, note duration descriptors were computed in terms
-of beats, so they are independent from the MIDI file resolution.
-A view to the graphs in Figure 1 provides some hints on what a melody track could look like using these descriptors.
-This way, a melody track seems to have less notes than
-other non-melody tracks, an average mean pitch, it contains
-smaller intervals, and has not too long notes. When this sort
-of hints are combined by the classifier, a decision about the
-track “melodicity” is taken. This type of reasoning has been
-used by other authors, like in [5], in order to build a series
-of rules able to take a decision on which is the melody track
-in a symbolic music file.
-
 ##Random Forest Classifier
+
+
+
+A number of classifiers were tested in an initial stage of
+this research and the random forests yielded the best results
+among them, so they were chosen for the experiments.
+Random forests (Breiman 2001) are weighed combinations
+of tree classifiers that use a random selection of features
+to build the decision taken at each node. This classifier
+has shown good performance compared to other classifier
+ensembles with a high robustness with respect to noise.
+The forest consists of K trees. Each tree is built using
+CART (Duda, Hart, & Stork 2000) methodology to maximum
+size without pruning. The number F of randomly selected
+features to split on the training set at each node is
+fixed for all trees. After the trees have grown, new samples
+are classified by each tree and their results are combined,
+giving as a result a membership probability for each class.
+In our case, the membership for class “melody” can be
+interpreted as the probability for a track of containing a
+melodic line.
+
 
 ##Track Selection Procedure
 
