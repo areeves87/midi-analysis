@@ -71,7 +71,30 @@ kable_styling(bootstrap_options = "striped", full_width = F, position = "float_r
 These statistical summaries of the musical data are defined by melodic and rhythmic properties as well as track-related properties. The descriptors are defined in the following table.
 
 ```{r}
+var_name <- names(agg)
+var_descr <- c("title of the midi transcription",
+               "channel # the note events stream from",
+               "track # the note events are contained within",
+               "indicates whether or not the track is a melody",
+               "number of the instrument program",
+               "family of the instrument program",
+               "name of the instrument program",
+               "number of note events within track",
+               "fraction of song the track's note lengths occupy",
+               "total number tracks",
+               "total number channels",
+               "fraction of note events that are the highest note per event",
+               "pitch class entropy",
+               "interval entropy",
+               "inter-onset interval entropy",
+               "previous note duration was shorter than current note duration",
+               "median midi note value for the track",
+               "median absolute deviation midi note value for the track",
+               "fraction of events with multiple notes for the track")
 
+data.frame(name = var_name, description = var_descr) %>%
+kable("html") %>%
+kable_styling(bootstrap_options = "striped", full_width = F, position = "float_right")
 ```
 
 
