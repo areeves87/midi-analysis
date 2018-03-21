@@ -2,7 +2,7 @@ library(tidyverse)
 library(tuneR)
 #library(plotly)
 
-###Functions for Loading Data###
+####Functions for Loading Data####
 
 ##tries reading in a file with the specified function, creates title column
 read_plus <- function(file_loc, read_fun = readMidi){
@@ -36,7 +36,7 @@ build_db <- function(directory = "ffmidi", FUN = readMidi) {
         return(db)      
 }
 
-###Functions for Creating Features###
+####Functions for Creating Features####
 
 #finds the mode of a vector
 Mode <- function(x) {
@@ -130,7 +130,7 @@ get_instrument_names <-  function(raw_midi){
         summarise(number = first(parameter1) + 1) #convert index
 }
 
-###Functions for Plotting Data###
+####Functions for Plotting Data####
 
 ggpiano <-     function(midi_notes, xlim = c(0,20000)){
                 ggplot(midi_notes, aes(colour = as.factor(channel))) +
