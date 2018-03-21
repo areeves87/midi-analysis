@@ -3,9 +3,7 @@ library(tuneR)
 
 source("load.R")
 
-if(file.exists("midi_melodies.csv")) {
-        midi_melodies <- read.csv("midi_melodies.csv")
-}else{ 
+if(!exists("melodies")){ 
 ##Create track features
 
 skylines <-     midi_db %>%

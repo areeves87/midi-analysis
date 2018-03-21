@@ -12,23 +12,23 @@ set.seed(415)
 ## RF can not handle categorical predictors with more than 53 categories.
 ## Since instrument name has 128 categories, we create an "other" category
 
-midi_melodies <- midi_melodies %>% #strings as factors
+melodies <- melodies %>% #strings as factors
         unclass() %>% 
         as.data.frame()
 
-midi_melodies <- midi_melodies %>% #assign low freq factors to "other"
+melodies <- melodies %>% #assign low freq factors to "other"
                  mutate(name = fct_lump(name, n = 52, ties.method = "min"),
                         channel = as.factor(channel),
                         track = as.factor(track)) 
                         
 
 ## 50% of the songs, not 50% of the tracks
-smp_size <- floor(0.50 * n_distinct(midi_melodies$title))
+smp_size <- floor(0.50 * n_distinct(melodies$title))
 
-train_ind <- sample(seq_len(n_distinct(midi_melodies$title)), size = smp_size)
+train_ind <- sample(seq_len(n_distinct(melodies$title)), size = smp_size)
 
-train <- midi_melodies %>% filter(as.numeric(title) %in% train_ind)
-test <- midi_melodies %>% filter(!(as.numeric(title) %in% train_ind))
+train <- melodies %>% filter(as.numeric(title) %in% train_ind)
+test <- melodies %>% filter(!(as.numeric(title) %in% train_ind))
 
 rf.fit <- randomForest(as.factor(ME) ~ . - title - track - number,
                     data = train, 
@@ -111,7 +111,7 @@ coords(model.roc, "best", ret = "threshold")
 model.acc <- model.acc %>%
         mutate(channel = channel %>% as.factor,
                track   = track %>% as.factor) %>%
-             left_join(midi_melodies[,c("title", "channel", "track", "name")])
+             left_join(melodies[,c("title", "channel", "track", "name")])
 
 auc(model.acc$ME, model.acc$rf.1)
 auc(model.acc$ME, model.acc$cf)
@@ -119,16 +119,16 @@ model.roc <- roc(model.acc$ME, model.acc$cf)
 plot.roc(model.acc$ME, model.acc$cf)
 coords(model.roc, "best", ret = "threshold")
 
-Prediction.rf.all <- predict(rf.fit, midi_melodies, type = "prob")
+Prediction.rf.all <- predict(rf.fit, melodies, type = "prob")
 
-Prediction.cf.all <- predict(fit.cf, midi_melodies, OOB=TRUE, type = "prob")
+Prediction.cf.all <- predict(fit.cf, melodies, OOB=TRUE, type = "prob")
 Prediction.cf.all <- as.data.frame(do.call(rbind, Prediction.cf.all))
 
 ensemble.all <- data.frame(RF = Prediction.rf.all[,2], CF = Prediction.cf.all[,2])
 
-midi_melodies$predict <- rowMeans(ensemble.all)
-auc(midi_melodies$ME, midi_melodies$predict)
-midi_melodies$predict <- round(midi_melodies$predict, 4)
+melodies$predict <- rowMeans(ensemble.all)
+auc(melodies$ME, melodies$predict)
+melodies$predict <- round(melodies$predict, 4)
 
 ####
 
