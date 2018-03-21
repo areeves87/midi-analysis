@@ -263,7 +263,11 @@ The membership for class "melody" can be interpreted as a track's probability of
 
 MIDI files can have more than one track with a melody in it. For example, in one section a violin track might carry the melody whereas the next section has the melody in a flute track. So in the case where a classifier is trained to select a single melody track, the classifier would tend to incorrectly label melody tracks as non-melody. 
 
-MIDI files can also have no melody track. Especially in video game music, the music could be a repetitive arpeggio -- think early versions of the Final Fantasy prelude theme -- 
+MIDI files can also have no melody track. Especially in video game music, the music could be a repetitive arpeggio -- think early versions of the Final Fantasy prelude theme -- that does not have a discernable melody.
+
+In this method, only one track is selected as the melody. Yet the method has to be able to deal with midi files continaining more than one melody track. Therefore, given a file, all its tracks are classified and their probabilities of being a melodic voice are obtained. Next a threshold is applied. At least one track's probability of being a melody has to exceed the threshold, otherwise the method labels the MIDI file as having no melody.
+
+If at least one track has a probability above threshold, then all the tracks exceeding the threshold are compared. The track with the highest probability of containing a melody is selected as the melody track. 
 
 #Results
 
