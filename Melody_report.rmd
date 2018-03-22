@@ -273,6 +273,10 @@ If at least one track has a probability above threshold, then all the tracks exc
 
 ##Datasets
 
+A corpora was created since there are no videogame music databases where the melodies are labeled. The midi files came from [Aaron Waltz's MIDI Shack](http://www.midishack.net/ffmidi.htm) and included 227 midi files representing 227 different songs from the soundtracks of Final Fantasy I - VII. The 227 files contained 'x' number of tracks, 'y' of which were melody tracks. 
+
+The main difficulty for building the dataset is in labeling the data. Each song requires listening to and writing down the track or tracks that best represent the song's melody. Sometimes this is easy. The airship theme in FFI was easy. 
+
 ##Experiments
 
 ###Melody vs. non-melody classification
